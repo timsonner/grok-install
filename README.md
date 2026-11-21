@@ -44,3 +44,7 @@ Windows, to use `-Force` or `-Help`:
 Linux x86_64 is tested on Omarchy. Linux ARM, macOS and Windows have not been tested on real hardware yet.
 
 It is a pre-release build, so names and URLs on x.ai may change.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

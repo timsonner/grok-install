@@ -1,0 +1,23 @@
+# AGENTS.md
+
+Guide for coding agents working in this repo.
+
+## Purpose
+
+Unofficial one-line installers for Grok Build 2.0 unified. Each script fetches the `agent-host` binary from https://x.ai/cli/unified and installs it as `grok`.
+
+## Rules
+
+- One script per platform. Keep them independent and small. Do not merge them into one script.
+- Every script must:
+  - read `https://x.ai/cli/unified/latest` for the version
+  - verify the sha256 before replacing anything
+  - keep the previous version for rollback
+  - skip when already current, unless forced (`--force` or `-Force`)
+  - make `--help` work when piped (`curl ... | bash -s -- --help`)
+- Before committing, run `bash -n` and `shellcheck` on every `.sh`, and a PowerShell parse on the `.ps1`.
+- When behavior or platform coverage changes, update the README one-liners and the Tested note.
+- No secrets, IP addresses or personal information in any file.
+- No Co-authored-by or agent trailers in commits.
+- Use only Grok models for any agent work.
+- No em dashes or arrow characters in docs or messages.
