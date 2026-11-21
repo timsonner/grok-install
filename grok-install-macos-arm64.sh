@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain `grok`.
-# Usage: grok-install-macos-arm64.sh [--force] [--keep-v1]
+# Usage: grok-install-macos-arm64.sh [--force] [--keep-v1] [--revert]
 set -euo pipefail
 
 BASE="https://x.ai/cli/unified"
@@ -9,17 +9,37 @@ BIN="$HOME/.grok/bin"
 LOCAL="$HOME/.local/bin"
 FORCE=0
 KEEP_V1=0
+REVERT=0
 for a in "$@"; do
   case "$a" in
     --force) FORCE=1 ;;
     --keep-v1) KEEP_V1=1 ;;
-    -h|--help) echo "Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain grok."; echo "Usage: grok-install-macos-arm64.sh [--force] [--keep-v1]"; exit 0 ;;
+    --revert) REVERT=1 ;;
+    -h|--help) echo "Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain grok."; echo "Usage: grok-install-macos-arm64.sh [--force] [--keep-v1] [--revert]"; exit 0 ;;
     *) echo "unknown option: $a" >&2; exit 2 ;;
   esac
 done
 
 [ "$(uname -s)-$(uname -m)" = "Darwin-arm64" ] || { echo "this installer is for macos-aarch64 only" >&2; exit 1; }
 FILE_PREFIX="agent-host"; PLAT="macos-aarch64"
+
+if [ "$REVERT" = 1 ]; then
+  if [ -L "$LOCAL/grok" ] && [ "$(readlink "$LOCAL/grok")" = "$BIN/agent-host" ]; then
+    mv -f "$LOCAL/grok" "$LOCAL/grok2"
+    echo "renamed $LOCAL/grok to $LOCAL/grok2 (the unified build stays installed)"
+  fi
+  if [ "$(readlink "$BIN/grok" 2>/dev/null || true)" = "agent-host" ]; then
+    if [ -e "$BIN/grok-v1" ]; then
+      mv -f "$BIN/grok-v1" "$BIN/grok"
+      echo "restored old grok 1.x at $BIN/grok"
+    else
+      rm -f "$BIN/grok"
+      echo "removed $BIN/grok (it pointed at the unified build)"
+    fi
+  fi
+  echo "reverted. Open a new terminal, then check: type -a grok; grok --version"
+  exit 0
+fi
 
 V=$(curl -fsS "$BASE/latest" | tr -d '[:space:]')
 [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad version from $BASE/latest: '$V'" >&2; exit 1; }

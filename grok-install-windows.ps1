@@ -1,14 +1,15 @@
 # Installs or updates Grok Build unified (agent-host) from x.ai as grok.exe. Windows x64, PowerShell 5.1 or newer.
-# Usage: & ([scriptblock]::Create((irm <raw url>))) [-Force] [-KeepV1] [-Help]
-param([switch]$Force, [switch]$KeepV1, [switch]$Help)
+# Usage: & ([scriptblock]::Create((irm <raw url>))) [-Force] [-KeepV1] [-Revert] [-Help]
+param([switch]$Force, [switch]$KeepV1, [switch]$Revert, [switch]$Help)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 if ($Help) {
   Write-Host 'Installs or updates Grok Build unified (agent-host) from x.ai as grok.exe.'
-  Write-Host 'Usage: grok-install-windows.ps1 [-Force] [-KeepV1]'
+  Write-Host 'Usage: grok-install-windows.ps1 [-Force] [-KeepV1] [-Revert]'
   Write-Host '  -Force   reinstall even if current'
   Write-Host '  -KeepV1  leave an old grok 1.x folder (~\.grok\bin) on your user PATH'
+  Write-Host '  -Revert  put the old grok 1.x folder first on your user PATH and rename the unified grok.exe to grok2.exe'
   return
 }
 
@@ -24,6 +25,25 @@ $Dl = Join-Path $Root 'downloads'
 $Bin = Join-Path $Root 'bin'
 $Exe = Join-Path $Bin 'grok.exe'
 $VerFile = Join-Path $Root 'version.txt'
+
+if ($Revert) {
+  $V1Bin = Join-Path $HOME '.grok\bin'
+  $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $Rest = @($UserPath -split ';' | Where-Object { $_ -and ($_.TrimEnd('\') -ne $Bin) -and ($_.TrimEnd('\') -ne $V1Bin) })
+  $Front = @()
+  if (Test-Path $V1Bin) { $Front += $V1Bin } else { Write-Host "no old grok 1.x folder at $V1Bin, nothing to put first" }
+  $NewPath = ($Front + @($Bin) + $Rest) -join ';'
+  if ($NewPath -ne $UserPath) {
+    [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
+    Write-Host "user PATH now has the old grok 1.x folder before $Bin"
+  }
+  if (Test-Path $Exe) {
+    Move-Item -Force $Exe (Join-Path $Bin 'grok2.exe')
+    Write-Host 'renamed grok.exe to grok2.exe (the unified build stays installed)'
+  }
+  Write-Host 'reverted. Open a new terminal, then check: Get-Command grok -All; grok --version'
+  return
+}
 New-Item -ItemType Directory -Force -Path $Dl, $Bin | Out-Null
 
 $V = ((Invoke-WebRequest -UseBasicParsing -Uri "$Base/latest").Content.ToString()).Trim()
