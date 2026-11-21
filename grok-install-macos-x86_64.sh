@@ -24,9 +24,18 @@ done
 FILE_PREFIX="agent-host"; PLAT="macos-x86_64"
 
 if [ "$REVERT" = 1 ]; then
+  # grok2 goes where your PATH already looks: ~/.local/bin if it is on PATH, else ~/.grok/bin
+  G2DIR="$LOCAL"
+  case ":$PATH:" in *":$LOCAL:"*) ;; *) G2DIR="$BIN" ;; esac
   if [ -L "$LOCAL/grok" ] && [ "$(readlink "$LOCAL/grok")" = "$BIN/agent-host" ]; then
-    mv -f "$LOCAL/grok" "$LOCAL/grok2"
-    echo "renamed $LOCAL/grok to $LOCAL/grok2 (the unified build stays installed)"
+    rm -f "$LOCAL/grok"
+    ln -sfn "$BIN/agent-host" "$G2DIR/grok2"
+    echo "grok2 now runs the unified build ($G2DIR/grok2, the build stays installed)"
+  fi
+  if [ "$G2DIR" != "$LOCAL" ] && [ -L "$LOCAL/grok2" ] && [ "$(readlink "$LOCAL/grok2")" = "$BIN/agent-host" ]; then
+    rm -f "$LOCAL/grok2"
+    ln -sfn "$BIN/agent-host" "$G2DIR/grok2"
+    echo "moved grok2 to $G2DIR/grok2 (it is on your PATH)"
   fi
   if [ "$(readlink "$BIN/grok" 2>/dev/null || true)" = "agent-host" ]; then
     if [ -e "$BIN/grok-v1" ]; then

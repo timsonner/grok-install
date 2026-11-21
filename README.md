@@ -31,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/timsonner/grok-install/main/grok-in
 
 - `--force` reinstalls even if you are current.
 - `--keep-v1` keeps an old grok 1.x as is. By default the script moves an official 1.x `~/.grok/bin/grok` to `~/.grok/bin/grok-v1` and points `~/.grok/bin/grok` at the new build, so it wins wherever the old installer put it on your PATH. On Linux it also removes mise-managed grok 1.x and disables mise grok.
-- `--revert` undoes the install without touching the network: renames `~/.local/bin/grok` to `grok2` (the unified build stays installed), moves `~/.grok/bin/grok-v1` back to `~/.grok/bin/grok`, and on Linux removes `grok` from mise `disable_tools` (backup `config.toml.bak-grok2`) and runs `mise install grok@latest`. Safe to run twice.
+- `--revert` undoes the install without touching the network: points `grok2` at the unified build (in `~/.local/bin` if that is on your PATH, otherwise `~/.grok/bin`) and removes `~/.local/bin/grok`, moves `~/.grok/bin/grok-v1` back to `~/.grok/bin/grok`, and on Linux removes `grok` from mise `disable_tools` (backup `config.toml.bak-grok2`) and runs `mise install grok@latest`. Safe to run twice.
 - `--help` prints usage.
 
 Windows takes `-Force`, `-KeepV1`, `-Revert` and `-Help`. `-Revert` puts the old `~\.grok\bin` folder first on your user PATH and renames the unified `grok.exe` to `grok2.exe`. The installer puts its folder first on your user PATH and, unless you pass `-KeepV1`, takes an old grok 1.x folder (`~\.grok\bin`) off your user PATH. The old files stay where they are. To pass a flag:
