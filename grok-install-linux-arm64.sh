@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain `grok`.
+# Usage: grok-install-linux-arm64.sh [--force] [--keep-v1]
+set -euo pipefail
+
+BASE="https://x.ai/cli/unified"
+DL="$HOME/.grok/downloads"
+BIN="$HOME/.grok/bin"
+LOCAL="$HOME/.local/bin"
+FORCE=0; KEEP_V1=0
+for a in "$@"; do
+  case "$a" in
+    --force) FORCE=1 ;;
+    --keep-v1) KEEP_V1=1 ;;
+    -h|--help) echo "Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain grok."; echo "Usage: grok-install-linux-arm64.sh [--force] [--keep-v1]"; exit 0 ;;
+    *) echo "unknown option: $a" >&2; exit 2 ;;
+  esac
+done
+
+[ "$(uname -s)-$(uname -m)" = "Linux-aarch64" ] || { echo "this installer is for linux-aarch64 only" >&2; exit 1; }
+FILE_PREFIX="agent-host"; PLAT="linux-aarch64"
+
+V=$(curl -fsS "$BASE/latest" | tr -d '[:space:]')
+[[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad version from $BASE/latest: '$V'" >&2; exit 1; }
+NAME="$FILE_PREFIX-$V-$PLAT"
+
+mkdir -p "$DL" "$BIN" "$LOCAL"
+CUR=$(basename "$(readlink "$BIN/agent-host" 2>/dev/null || true)")
+if [ "$CUR" = "$NAME" ] && [ -x "$DL/$NAME" ] && [ "$FORCE" = 0 ]; then
+  echo "already on $V"
+else
+  echo "downloading $V"
+  SUM=$(curl -fsS "$BASE/$NAME.sha256" | cut -d' ' -f1)
+  curl -fSL --progress-bar -o "$DL/$NAME.part" "$BASE/$NAME"
+  echo "$SUM  $DL/$NAME.part" | sha256sum -c - >/dev/null || { rm -f "$DL/$NAME.part"; echo "checksum mismatch, nothing changed" >&2; exit 1; }
+  chmod 755 "$DL/$NAME.part"
+  mv -f "$DL/$NAME.part" "$DL/$NAME"
+  ln -sfn "../downloads/$NAME" "$BIN/agent-host"
+  echo "checksum ok, linked $V"
+  # keep the current and the one previous download for rollback
+  ls -1t "$DL"/$FILE_PREFIX-*-$PLAT 2>/dev/null | tail -n +3 | xargs -r rm -f
+fi
+
+ln -sfn "$BIN/agent-host" "$LOCAL/grok"
+[ -e "$LOCAL/grok2" ] && rm -f "$LOCAL/grok2" && echo "removed grok2"
+
+if command -v mise >/dev/null 2>&1; then
+  if ! mise settings get disable_tools 2>/dev/null | grep -qw grok; then
+    cp -n "$HOME/.config/mise/config.toml" "$HOME/.config/mise/config.toml.bak.pre-grok2" 2>/dev/null || true
+    mise settings add disable_tools grok
+    echo "disabled mise grok (backup: config.toml.bak.pre-grok2)"
+  fi
+  if [ "$KEEP_V1" = 0 ] && [ -n "$(mise ls --installed grok 2>/dev/null)" ]; then
+    mise uninstall --all grok 2>/dev/null && echo "removed mise grok 1.x" || echo "no mise grok versions to remove"
+  fi
+fi
+
+case ":$PATH:" in
+  *":$LOCAL:"*) ;;
+  *) echo "note: $LOCAL is not on your PATH. Add this to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+esac
+
+echo "now: $("$LOCAL/grok" --version 2>&1 | head -1)"
