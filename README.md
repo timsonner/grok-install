@@ -19,7 +19,7 @@ Unofficial one-line installers for Grok Build 2.0 unified. They fetch the `agent
 | macOS Intel | `curl -fsSL https://raw.githubusercontent.com/timsonner/grok-install/main/grok-install-macos-x86_64.sh \| bash` |
 | Windows x64 (PowerShell) | `irm https://raw.githubusercontent.com/timsonner/grok-install/main/grok-install-windows.ps1 \| iex` |
 
-Linux and macOS install to `~/.grok` and link `~/.local/bin/grok`. If `~/.local/bin` is not on your PATH, the script prints the line to add. Windows installs to `%LOCALAPPDATA%\grok\bin\grok.exe` and adds that folder to your user PATH.
+Linux and macOS install to `~/.grok` and link both `~/.grok/bin/grok` and `~/.local/bin/grok`. If `~/.local/bin` is not on your PATH, the script prints the line to add. Windows installs to `%LOCALAPPDATA%\grok\bin\grok.exe` and adds that folder to your user PATH.
 
 ## Flags
 
@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/timsonner/grok-install/main/grok-in
 ```
 
 - `--force` reinstalls even if you are current.
-- `--keep-v1` (Linux only) keeps old mise-managed grok 1.x installs. By default they are removed, and mise grok is disabled so it does not shadow the new `grok`.
+- `--keep-v1` keeps an old grok 1.x as is. By default the script moves an official 1.x `~/.grok/bin/grok` to `~/.grok/bin/grok-v1` and points `~/.grok/bin/grok` at the new build, so it wins wherever the old installer put it on your PATH. On Linux it also removes mise-managed grok 1.x and disables mise grok.
 - `--help` prints usage.
 
 Windows takes `-Force`, `-KeepV1` and `-Help`. The installer puts its folder first on your user PATH and, unless you pass `-KeepV1`, takes an old grok 1.x folder (`~\.grok\bin`) off your user PATH. The old files stay where they are. To pass a flag:
@@ -41,7 +41,7 @@ Windows takes `-Force`, `-KeepV1` and `-Help`. The installer puts its folder fir
 
 ## Tested
 
-Linux x86_64 is tested on two Omarchy machines, including replacing mise-managed grok 1.x. Windows x64 is tested on Windows 11 with PowerShell 5.1, including replacing an official grok 1.x install. Linux ARM and macOS have not been tested on real hardware yet.
+Linux x86_64 is tested on two Omarchy machines, including replacing mise-managed grok 1.x. Windows x64 is tested on Windows 11 with PowerShell 5.1, and macOS Intel on macOS 15, both including replacing an official grok 1.x install. Linux ARM and macOS Apple Silicon have not been tested on real hardware yet.
 
 It is a pre-release build, so names and URLs on x.ai may change.
 

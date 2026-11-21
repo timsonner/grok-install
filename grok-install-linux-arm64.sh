@@ -42,6 +42,13 @@ else
 fi
 
 ln -sfn "$BIN/agent-host" "$LOCAL/grok"
+if [ "$KEEP_V1" = 0 ] && [ -e "$BIN/grok" ] && [ "$(readlink "$BIN/grok" 2>/dev/null)" != "agent-host" ]; then
+  mv -f "$BIN/grok" "$BIN/grok-v1"
+  echo "moved old grok 1.x to $BIN/grok-v1 (use --keep-v1 to skip)"
+fi
+if [ "$KEEP_V1" = 0 ] || [ ! -e "$BIN/grok" ]; then
+  ln -sfn agent-host "$BIN/grok"
+fi
 [ -e "$LOCAL/grok2" ] && rm -f "$LOCAL/grok2" && echo "removed grok2"
 
 if command -v mise >/dev/null 2>&1; then
@@ -59,7 +66,7 @@ if command -v mise >/dev/null 2>&1; then
 fi
 
 case ":$PATH:" in
-  *":$LOCAL:"*) ;;
+  *":$LOCAL:"*|*":$BIN:"*) ;;
   *) echo "note: $LOCAL is not on your PATH. Add this to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
 esac
 

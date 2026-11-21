@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain `grok`.
-# Usage: grok-install-macos-arm64.sh [--force]
+# Usage: grok-install-macos-arm64.sh [--force] [--keep-v1]
 set -euo pipefail
 
 BASE="https://x.ai/cli/unified"
@@ -8,10 +8,12 @@ DL="$HOME/.grok/downloads"
 BIN="$HOME/.grok/bin"
 LOCAL="$HOME/.local/bin"
 FORCE=0
+KEEP_V1=0
 for a in "$@"; do
   case "$a" in
     --force) FORCE=1 ;;
-    -h|--help) echo "Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain grok."; echo "Usage: grok-install-macos-arm64.sh [--force]"; exit 0 ;;
+    --keep-v1) KEEP_V1=1 ;;
+    -h|--help) echo "Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain grok."; echo "Usage: grok-install-macos-arm64.sh [--force] [--keep-v1]"; exit 0 ;;
     *) echo "unknown option: $a" >&2; exit 2 ;;
   esac
 done
@@ -41,9 +43,16 @@ else
 fi
 
 ln -sfn "$BIN/agent-host" "$LOCAL/grok"
+if [ "$KEEP_V1" = 0 ] && [ -e "$BIN/grok" ] && [ "$(readlink "$BIN/grok" 2>/dev/null)" != "agent-host" ]; then
+  mv -f "$BIN/grok" "$BIN/grok-v1"
+  echo "moved old grok 1.x to $BIN/grok-v1 (use --keep-v1 to skip)"
+fi
+if [ "$KEEP_V1" = 0 ] || [ ! -e "$BIN/grok" ]; then
+  ln -sfn agent-host "$BIN/grok"
+fi
 
 case ":$PATH:" in
-  *":$LOCAL:"*) ;;
+  *":$LOCAL:"*|*":$BIN:"*) ;;
   *) echo "note: $LOCAL is not on your PATH. Add this to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
 esac
 
