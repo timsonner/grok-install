@@ -81,7 +81,7 @@ To go forward again, rerun the install one-liner.
 
 ## Tested
 
-Linux x86_64 is tested on two Omarchy machines, including replacing mise-managed grok 1.x. Windows x64 is tested on Windows 11 with PowerShell 5.1, and macOS Intel on macOS 15, both including replacing an official grok 1.x install. `--revert` was tested on Linux x86_64 with a throwaway HOME (run twice, mise config edit and link renames), and the revert steps by hand on an Omarchy machine, where grok 1.x answered a turn and the unified build showed the error above. The macOS `--revert`, the Windows `-Revert` (PowerShell parse check only) and Linux ARM are untested, as is macOS Apple Silicon.
+Linux x86_64 is tested on two Omarchy machines, including replacing mise-managed grok 1.x. Windows x64 is tested on Windows 11 with PowerShell 5.1, and macOS Intel on macOS 15, both including replacing an official grok 1.x install. `--revert` ran twice (second run changed nothing) on real hardware: Linux x86_64 on an Omarchy machine (grok 1.x back via mise, a 1.x turn answered, unified build kept as `grok2`), macOS Intel on macOS 15 (official 1.x restored, `grok2` in `~/.grok/bin`), and Windows 11 with PowerShell 5.1 (`-Revert` put `~\.grok\bin` first and renamed the unified `grok.exe` to `grok2.exe`). On the macOS and Windows machines the old 1.x was not signed in, so a 1.x turn was not tested there. Linux ARM and macOS Apple Silicon `--revert` are untested.
 
 It is a pre-release build, so names and URLs on x.ai may change.
 
