@@ -1,12 +1,14 @@
 # Installs or updates Grok Build unified (agent-host) from x.ai as grok.exe. Windows x64, PowerShell 5.1 or newer.
-# Usage: & ([scriptblock]::Create((irm <raw url>))) [-Force] [-Help]
-param([switch]$Force, [switch]$Help)
+# Usage: & ([scriptblock]::Create((irm <raw url>))) [-Force] [-KeepV1] [-Help]
+param([switch]$Force, [switch]$KeepV1, [switch]$Help)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 if ($Help) {
   Write-Host 'Installs or updates Grok Build unified (agent-host) from x.ai as grok.exe.'
-  Write-Host 'Usage: grok-install-windows.ps1 [-Force]'
+  Write-Host 'Usage: grok-install-windows.ps1 [-Force] [-KeepV1]'
+  Write-Host '  -Force   reinstall even if current'
+  Write-Host '  -KeepV1  leave an old grok 1.x folder (~\.grok\bin) on your user PATH'
   return
 }
 
@@ -48,11 +50,21 @@ if ($Cur -eq $V -and (Test-Path $Target) -and (Test-Path $Exe) -and -not $Force)
   Get-ChildItem $Dl -Filter 'agent-host-*-windows-x86_64.exe' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 2 | Remove-Item -Force
 }
 
+$V1Bin = Join-Path $HOME '.grok\bin'
 $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if (($UserPath -split ';') -notcontains $Bin) {
-  [Environment]::SetEnvironmentVariable('Path', ($UserPath.TrimEnd(';') + ';' + $Bin).TrimStart(';'), 'User')
-  $env:Path += ';' + $Bin
-  Write-Host "added $Bin to your user PATH (open a new terminal to use grok)"
+$Parts = @($UserPath -split ';' | Where-Object { $_ -and ($_.TrimEnd('\') -ne $Bin) })
+$DroppedV1 = $false
+if (-not $KeepV1) {
+  $Kept = @($Parts | Where-Object { $_.TrimEnd('\') -ne $V1Bin })
+  $DroppedV1 = $Kept.Count -ne $Parts.Count
+  $Parts = $Kept
 }
+$NewPath = (@($Bin) + $Parts) -join ';'
+if ($NewPath -ne $UserPath) {
+  [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
+  Write-Host "put $Bin first on your user PATH (open a new terminal to use grok)"
+  if ($DroppedV1) { Write-Host "removed old grok 1.x folder $V1Bin from your user PATH (files left in place, use -KeepV1 to skip)" }
+}
+$env:Path = (@($Bin) + @($env:Path -split ';' | Where-Object { $_ -and ($_.TrimEnd('\') -ne $Bin) -and ($KeepV1 -or $_.TrimEnd('\') -ne $V1Bin) })) -join ';'
 
 Write-Host ("now: " + (& $Exe --version 2>&1 | Select-Object -First 1))

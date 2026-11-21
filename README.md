@@ -33,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/timsonner/grok-install/main/grok-in
 - `--keep-v1` (Linux only) keeps old mise-managed grok 1.x installs. By default they are removed, and mise grok is disabled so it does not shadow the new `grok`.
 - `--help` prints usage.
 
-Windows, to use `-Force` or `-Help`:
+Windows takes `-Force`, `-KeepV1` and `-Help`. The installer puts its folder first on your user PATH and, unless you pass `-KeepV1`, takes an old grok 1.x folder (`~\.grok\bin`) off your user PATH. The old files stay where they are. To pass a flag:
 
 ```
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/timsonner/grok-install/main/grok-install-windows.ps1))) -Force
