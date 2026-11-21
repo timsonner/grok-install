@@ -50,8 +50,11 @@ if command -v mise >/dev/null 2>&1; then
     mise settings add disable_tools grok
     echo "disabled mise grok (backup: config.toml.bak.pre-grok2)"
   fi
-  if [ "$KEEP_V1" = 0 ] && [ -n "$(mise ls --installed grok 2>/dev/null)" ]; then
-    mise uninstall --all grok 2>/dev/null && echo "removed mise grok 1.x" || echo "no mise grok versions to remove"
+  MISE_GROK="${MISE_DATA_DIR:-$HOME/.local/share/mise}/installs/grok"
+  if [ "$KEEP_V1" = 0 ] && [ -n "$(ls -A "$MISE_GROK" 2>/dev/null)" ]; then
+    mise uninstall --all grok >/dev/null 2>&1 || true
+    rm -rf "$MISE_GROK"
+    echo "removed mise grok 1.x"
   fi
 fi
 
