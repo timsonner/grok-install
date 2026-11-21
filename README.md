@@ -41,7 +41,7 @@ Windows takes `-Force`, `-KeepV1` and `-Help`. The installer puts its folder fir
 
 ## Tested
 
-Linux x86_64 is tested on Omarchy. Linux ARM, macOS and Windows have not been tested on real hardware yet.
+Linux x86_64 is tested on two Omarchy machines, including replacing mise-managed grok 1.x. Windows x64 is tested on Windows 11 with PowerShell 5.1, including replacing an official grok 1.x install. Linux ARM and macOS have not been tested on real hardware yet.
 
 It is a pre-release build, so names and URLs on x.ai may change.
 
