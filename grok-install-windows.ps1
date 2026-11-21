@@ -1,14 +1,15 @@
-# Installs or updates Grok Build unified (agent-host) from x.ai as grok.exe. Windows x64, PowerShell 5.1 or newer.
-# Usage: & ([scriptblock]::Create((irm <raw url>))) [-Force] [-KeepV1] [-Revert] [-Help]
-param([switch]$Force, [switch]$KeepV1, [switch]$Revert, [switch]$Help)
+# Installs or updates Grok Build unified (agent-host) from x.ai as grok2.exe, next to your existing grok. Windows x64, PowerShell 5.1 or newer.
+# Usage: & ([scriptblock]::Create((irm <raw url>))) [-Force] [-AsGrok] [-KeepV1] [-Revert] [-Help]
+param([switch]$Force, [switch]$AsGrok, [switch]$KeepV1, [switch]$Revert, [switch]$Help)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 if ($Help) {
-  Write-Host 'Installs or updates Grok Build unified (agent-host) from x.ai as grok.exe.'
-  Write-Host 'Usage: grok-install-windows.ps1 [-Force] [-KeepV1] [-Revert]'
+  Write-Host 'Installs or updates Grok Build unified (agent-host) from x.ai as grok2.exe, next to your existing grok.'
+  Write-Host 'Usage: grok-install-windows.ps1 [-Force] [-AsGrok] [-KeepV1] [-Revert]'
   Write-Host '  -Force   reinstall even if current'
-  Write-Host '  -KeepV1  leave an old grok 1.x folder (~\.grok\bin) on your user PATH'
+  Write-Host '  -AsGrok  install as plain grok.exe, first on your user PATH, and take an old grok 1.x folder off it'
+  Write-Host '  -KeepV1  with -AsGrok, leave an old grok 1.x folder (~\.grok\bin) on your user PATH'
   Write-Host '  -Revert  put the old grok 1.x folder first on your user PATH and rename the unified grok.exe to grok2.exe'
   return
 }
@@ -23,7 +24,8 @@ $Base = 'https://x.ai/cli/unified'
 $Root = Join-Path $env:LOCALAPPDATA 'grok'
 $Dl = Join-Path $Root 'downloads'
 $Bin = Join-Path $Root 'bin'
-$Exe = Join-Path $Bin 'grok.exe'
+$OldExe = Join-Path $Bin 'grok.exe'
+$Exe = Join-Path $Bin $(if ($AsGrok) { 'grok.exe' } else { 'grok2.exe' })
 $VerFile = Join-Path $Root 'version.txt'
 
 if ($Revert) {
@@ -37,8 +39,8 @@ if ($Revert) {
     [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
     Write-Host "user PATH now has the old grok 1.x folder before $Bin"
   }
-  if (Test-Path $Exe) {
-    Move-Item -Force $Exe (Join-Path $Bin 'grok2.exe')
+  if (Test-Path $OldExe) {
+    Move-Item -Force $OldExe (Join-Path $Bin 'grok2.exe')
     Write-Host 'renamed grok.exe to grok2.exe (the unified build stays installed)'
   }
   Write-Host 'reverted. Open a new terminal, then check: Get-Command grok -All; grok --version'
@@ -73,18 +75,31 @@ if ($Cur -eq $V -and (Test-Path $Target) -and (Test-Path $Exe) -and -not $Force)
 $V1Bin = Join-Path $HOME '.grok\bin'
 $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $Parts = @($UserPath -split ';' | Where-Object { $_ -and ($_.TrimEnd('\') -ne $Bin) })
-$DroppedV1 = $false
-if (-not $KeepV1) {
-  $Kept = @($Parts | Where-Object { $_.TrimEnd('\') -ne $V1Bin })
-  $DroppedV1 = $Kept.Count -ne $Parts.Count
-  $Parts = $Kept
+if ($AsGrok) {
+  Remove-Item -Force (Join-Path $Bin 'grok2.exe') -ErrorAction SilentlyContinue
+  $DroppedV1 = $false
+  if (-not $KeepV1) {
+    $Kept = @($Parts | Where-Object { $_.TrimEnd('\') -ne $V1Bin })
+    $DroppedV1 = $Kept.Count -ne $Parts.Count
+    $Parts = $Kept
+  }
+  $NewPath = (@($Bin) + $Parts) -join ';'
+  if ($NewPath -ne $UserPath) {
+    [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
+    Write-Host "put $Bin first on your user PATH (open a new terminal to use grok)"
+    if ($DroppedV1) { Write-Host "removed old grok 1.x folder $V1Bin from your user PATH (files left in place, use -KeepV1 to skip)" }
+  }
+  $env:Path = (@($Bin) + @($env:Path -split ';' | Where-Object { $_ -and ($_.TrimEnd('\') -ne $Bin) -and ($KeepV1 -or $_.TrimEnd('\') -ne $V1Bin) })) -join ';'
+} else {
+  # add our folder AFTER your existing entries so an existing grok keeps winning
+  $NewPath = (@($Parts) + @($Bin)) -join ';'
+  if ($NewPath -ne $UserPath) {
+    [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
+    Write-Host "added $Bin to the end of your user PATH (open a new terminal to use grok2)"
+  }
+  if (-not (@($env:Path -split ';') -contains $Bin)) { $env:Path = $env:Path.TrimEnd(';') + ';' + $Bin }
+  if (Test-Path $OldExe) { Write-Host "note: $OldExe is from an older install of this script. Run it with -Revert to hand grok back to your old install." }
+  Write-Host 'installed as grok2. Your existing grok was not touched.'
 }
-$NewPath = (@($Bin) + $Parts) -join ';'
-if ($NewPath -ne $UserPath) {
-  [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
-  Write-Host "put $Bin first on your user PATH (open a new terminal to use grok)"
-  if ($DroppedV1) { Write-Host "removed old grok 1.x folder $V1Bin from your user PATH (files left in place, use -KeepV1 to skip)" }
-}
-$env:Path = (@($Bin) + @($env:Path -split ';' | Where-Object { $_ -and ($_.TrimEnd('\') -ne $Bin) -and ($KeepV1 -or $_.TrimEnd('\') -ne $V1Bin) })) -join ';'
 
 Write-Host ("now: " + (& $Exe --version 2>&1 | Select-Object -First 1))

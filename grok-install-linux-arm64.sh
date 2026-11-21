@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain `grok`.
-# Usage: grok-install-linux-arm64.sh [--force] [--keep-v1] [--revert]
+# Installs or updates Grok Build unified (agent-host) from x.ai as `grok2`, next to your existing grok.
+# Usage: grok-install-linux-arm64.sh [--force] [--as-grok] [--keep-v1] [--revert]
 set -euo pipefail
 
 BASE="https://x.ai/cli/unified"
 DL="$HOME/.grok/downloads"
 BIN="$HOME/.grok/bin"
 LOCAL="$HOME/.local/bin"
-FORCE=0; KEEP_V1=0; REVERT=0
+FORCE=0; KEEP_V1=0; REVERT=0; AS_GROK=0
 for a in "$@"; do
   case "$a" in
     --force) FORCE=1 ;;
+    --as-grok) AS_GROK=1 ;;
     --keep-v1) KEEP_V1=1 ;;
     --revert) REVERT=1 ;;
-    -h|--help) echo "Installs or updates Grok Build unified (agent-host) from x.ai and makes it plain grok."; echo "Usage: grok-install-linux-arm64.sh [--force] [--keep-v1] [--revert]"; exit 0 ;;
+    -h|--help) echo "Installs or updates Grok Build unified (agent-host) from x.ai as grok2, next to your existing grok."; echo "Usage: grok-install-linux-arm64.sh [--force] [--as-grok] [--keep-v1] [--revert]"; exit 0 ;;
     *) echo "unknown option: $a" >&2; exit 2 ;;
   esac
 done
@@ -78,33 +79,55 @@ else
   ls -1t "$DL"/$FILE_PREFIX-*-$PLAT 2>/dev/null | tail -n +3 | xargs -r rm -f
 fi
 
-ln -sfn "$BIN/agent-host" "$LOCAL/grok"
-if [ "$KEEP_V1" = 0 ] && [ -e "$BIN/grok" ] && [ "$(readlink "$BIN/grok" 2>/dev/null)" != "agent-host" ]; then
-  mv -f "$BIN/grok" "$BIN/grok-v1"
-  echo "moved old grok 1.x to $BIN/grok-v1 (use --keep-v1 to skip)"
-fi
-if [ "$KEEP_V1" = 0 ] || [ ! -e "$BIN/grok" ]; then
-  ln -sfn agent-host "$BIN/grok"
-fi
-[ -e "$LOCAL/grok2" ] && rm -f "$LOCAL/grok2" && echo "removed grok2"
-
-if command -v mise >/dev/null 2>&1; then
-  if ! mise settings get disable_tools 2>/dev/null | grep -qw grok; then
-    cp -n "$HOME/.config/mise/config.toml" "$HOME/.config/mise/config.toml.bak.pre-grok2" 2>/dev/null || true
-    mise settings add disable_tools grok
-    echo "disabled mise grok (backup: config.toml.bak.pre-grok2)"
+# grok2 goes where your PATH already looks: ~/.local/bin if it is on PATH, else ~/.grok/bin
+G2DIR="$LOCAL"
+case ":$PATH:" in *":$LOCAL:"*) ;; *) G2DIR="$BIN" ;; esac
+if [ "$AS_GROK" = 1 ]; then
+  ln -sfn "$BIN/agent-host" "$LOCAL/grok"
+  if [ "$KEEP_V1" = 0 ] && [ -e "$BIN/grok" ] && [ "$(readlink "$BIN/grok" 2>/dev/null)" != "agent-host" ]; then
+    mv -f "$BIN/grok" "$BIN/grok-v1"
+    echo "moved old grok 1.x to $BIN/grok-v1 (use --keep-v1 to skip)"
   fi
-  MISE_GROK="${MISE_DATA_DIR:-$HOME/.local/share/mise}/installs/grok"
-  if [ "$KEEP_V1" = 0 ] && [ -n "$(ls -A "$MISE_GROK" 2>/dev/null)" ]; then
-    mise uninstall --all grok >/dev/null 2>&1 || true
-    rm -rf "$MISE_GROK"
-    echo "removed mise grok 1.x"
+  if [ "$KEEP_V1" = 0 ] || [ ! -e "$BIN/grok" ]; then
+    ln -sfn agent-host "$BIN/grok"
   fi
+  rm -f "$LOCAL/grok2" "$BIN/grok2"
+
+  if command -v mise >/dev/null 2>&1; then
+    if ! mise settings get disable_tools 2>/dev/null | grep -qw grok; then
+      cp -n "$HOME/.config/mise/config.toml" "$HOME/.config/mise/config.toml.bak.pre-grok2" 2>/dev/null || true
+      mise settings add disable_tools grok
+      echo "disabled mise grok (backup: config.toml.bak.pre-grok2)"
+    fi
+    MISE_GROK="${MISE_DATA_DIR:-$HOME/.local/share/mise}/installs/grok"
+    if [ "$KEEP_V1" = 0 ] && [ -n "$(ls -A "$MISE_GROK" 2>/dev/null)" ]; then
+      mise uninstall --all grok >/dev/null 2>&1 || true
+      rm -rf "$MISE_GROK"
+      echo "removed mise grok 1.x"
+    fi
+  fi
+  G2DIR=""
+else
+  ln -sfn "$BIN/agent-host" "$G2DIR/grok2"
+  if [ "$G2DIR" != "$LOCAL" ] && [ -L "$LOCAL/grok2" ] && [ "$(readlink "$LOCAL/grok2")" = "$BIN/agent-host" ]; then
+    rm -f "$LOCAL/grok2"
+  fi
+  if [ -L "$LOCAL/grok" ] && [ "$(readlink "$LOCAL/grok")" = "$BIN/agent-host" ]; then
+    echo "note: $LOCAL/grok still points at the unified build from an older install. Run this script with --revert to hand grok back to your old install."
+  fi
+  echo "installed as grok2 ($G2DIR/grok2). Your existing grok was not touched."
 fi
 
-case ":$PATH:" in
-  *":$LOCAL:"*|*":$BIN:"*) ;;
-  *) echo "note: $LOCAL is not on your PATH. Add this to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
-esac
+if [ -n "$G2DIR" ]; then
+  case ":$PATH:" in
+    *":$G2DIR:"*) ;;
+    *) echo "note: $G2DIR is not on your PATH. Add this to your shell profile: export PATH=\"$G2DIR:\$PATH\"" ;;
+  esac
+else
+  case ":$PATH:" in
+    *":$LOCAL:"*|*":$BIN:"*) ;;
+    *) echo "note: $LOCAL is not on your PATH. Add this to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+  esac
+fi
 
-echo "now: $("$LOCAL/grok" --version 2>&1 | head -1)"
+echo "now: $("$BIN/agent-host" --version 2>&1 | head -1)"
